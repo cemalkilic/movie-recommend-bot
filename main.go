@@ -8,6 +8,8 @@ import (
 	"github.com/gorilla/mux"
 	"log"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
 )
 
@@ -19,6 +21,13 @@ type Movie struct {
 
 // global Movies array to simulate a database, for now
 var Movies []Movie
+
+// SSL certificate path
+var CertFilePath string
+// SSL private key path
+var KeyFilePath string
+// Telegram token
+var TelegramToken string
 
 func homePage(w http.ResponseWriter, r *http.Request){
 	fmt.Fprintf(w, "Welcome to the Homepage!")
@@ -95,7 +104,8 @@ func sayHello(chatID int64, name string) error {
 	}
 
 	// Send a post request with your token
-	res, err := http.Post("https://api.telegram.org/bot<tkn>/sendMessage", "application/json", bytes.NewBuffer(reqBytes))
+	url := "https://api.telegram.org/bot" + TelegramToken + "/sendMessage"
+	res, err := http.Post(url, "application/json", bytes.NewBuffer(reqBytes))
 	if err != nil {
 		return err
 	}
@@ -114,7 +124,38 @@ func handleRequests() {
 	router.HandleFunc("/all", returnAllMovies)
 	router.HandleFunc("/telegram", telegramWebhook)
 
-	log.Fatal(http.ListenAndServeTLS(":443", "<cert>", "<key>", router))
+	log.Fatal(http.ListenAndServeTLS(":443", CertFilePath, KeyFilePath, router))
+}
+
+func init() {
+
+	// TODO avoid the global variables, migrate them to kind of Config!
+
+	TelegramToken = os.Getenv("TELEGRAM_TOKEN")
+	if TelegramToken == "" {
+		fmt.Println("TELEGRAM_TOKEN must be set!")
+		os.Exit(1)
+	}
+
+	CertFilePath = os.Getenv("CERT_FILE_PATH")
+	if CertFilePath == "" {
+		var path string
+		path, err := filepath.Abs("cert.pem")
+		if err != nil {
+			fmt.Println("Error on Abs cert.pem")
+		}
+		CertFilePath = path
+	}
+
+	KeyFilePath = os.Getenv("KEY_FILE_PATH")
+	if KeyFilePath == "" {
+		var path string
+		path, err := filepath.Abs("key.pem")
+		if err != nil {
+			fmt.Println("Error on Abs key.pem")
+		}
+		KeyFilePath = path
+	}
 }
 
 func main() {
