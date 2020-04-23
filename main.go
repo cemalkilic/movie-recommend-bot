@@ -111,7 +111,11 @@ func sayHello(chatID int64, name string) error {
 	}
 
 	if res.StatusCode != http.StatusOK {
-		return errors.New("Unexpected status" + res.Status)
+		body, err := ioutil.ReadAll(res.Body)
+		if err != nil {
+			return err
+		}
+		return errors.New("unexpected status" + res.Status + " -> " + string(body))
 	}
 
 	return nil
