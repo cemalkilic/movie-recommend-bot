@@ -56,7 +56,7 @@ func returnAllMovies(w http.ResponseWriter, r *http.Request){
 	for _, movie := range allMoviesFromJotForm {
 		movieStruct := createMovieStructFromJotFormResponse(movie)
 		movieStruct = fillMovieStructMetadata(movieStruct)
-		allMoviesStructured = append(allMoviesStructured, movieStruct)
+		allMoviesStructured = append(allMoviesStructured, *movieStruct)
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -108,7 +108,7 @@ func telegramWebhook(res http.ResponseWriter, req *http.Request) {
 	randomMovie := getRandomMovie()
 
 	// Send the selected movie to the client
-	if err := sendMovieToChat(body.Message.Chat.ID, randomMovie); err != nil {
+	if err := sendMovieToChat(body.Message.Chat.ID, *randomMovie); err != nil {
 		fmt.Println("Error in sending reply:", err)
 		return
 	}
@@ -138,13 +138,13 @@ func getAllMovies() []interface{} {
 	return content
 }
 
-func createMovieStructFromJotFormResponse(jotformResponse interface{}) Movie {
+func createMovieStructFromJotFormResponse(jotformResponse interface{}) *Movie {
 	// sorry future myself
 	// JotForm API & json handling in go forced me to do it :(
 	jotformFields := jotformResponse.(map[string]interface{})["answers"].(map[string]interface{})
 
 	// Our Movie struct to be returned
-	var movie Movie
+	var movie = new(Movie)
 
 	// JotForm API returns every column,
 	// need to traverse them all
@@ -179,7 +179,7 @@ func createMovieStructFromJotFormResponse(jotformResponse interface{}) Movie {
 	return movie
 }
 
-func fillMovieStructMetadata(movie Movie) Movie {
+func fillMovieStructMetadata(movie *Movie) *Movie {
 	omdbApiURL := "https://www.omdbapi.com/?apikey=" + OMDBAPIKey + "&t=" + url.QueryEscape(movie.Title)
 
 	res, err := http.Get(omdbApiURL)
@@ -188,7 +188,7 @@ func fillMovieStructMetadata(movie Movie) Movie {
 	}
 
 	// Override the value from OMDB API to existing key in movie struct
-	if err := json.NewDecoder(res.Body).Decode(&movie); err != nil {
+	if err := json.NewDecoder(res.Body).Decode(movie); err != nil {
 		fmt.Println("Could not decode JSON", err)
 		return movie
 	}
@@ -196,7 +196,7 @@ func fillMovieStructMetadata(movie Movie) Movie {
 	return movie
 }
 
-func getRandomMovie() Movie {
+func getRandomMovie() *Movie {
 
 	allMovies := getAllMovies()
 
