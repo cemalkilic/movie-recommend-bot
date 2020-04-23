@@ -1,6 +1,8 @@
 <b>{{.Title}} ({{.Year}})</b>
+<i>{{.Runtime}}</i> - <b>{{.IMDBRating}}</b>
 
 <b>Director</b>: {{.Director}}
-<b>Actors</b>: Actor1, Actor2
+<b>Actors</b>: {{.Actors}}
 
-Some great description here
+{{.Plot}}
+<a href="{{.PosterURL}}">Poster</a>
