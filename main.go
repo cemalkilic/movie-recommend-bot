@@ -19,8 +19,9 @@ import (
 
 type Movie struct {
 	Title string `json:"Title"`
-	Year int16 `json:"year"`
+	Year string `json:"year"`
 	Director string `json:"director"`
+	Notes string `json:"notes"`
 }
 
 // global Movies array to simulate a database, for now
@@ -32,6 +33,10 @@ var CertFilePath string
 var KeyFilePath string
 // Telegram token
 var TelegramToken string
+// JotForm Form ID that holds the data
+var JotFormFormID string
+// JotForm API Key to access the form data
+var JotFormAPIKey string
 
 func homePage(w http.ResponseWriter, r *http.Request){
 	fmt.Fprintf(w, "Welcome to the Homepage!")
@@ -97,12 +102,77 @@ func telegramWebhook(res http.ResponseWriter, req *http.Request) {
 	fmt.Println("Reply sent!")
 }
 
-func getRandomMovie() Movie {
-	rand.Seed(time.Now().UnixNano())
-	fmt.Println(len(Movies))
-	randKey := rand.Intn(len(Movies))
-	return Movies[randKey]
+func getAllMovies() []interface{} {
+	// Get movies from JotForm
+	res, err := http.Get("https://api.jotform.com/form/" + JotFormFormID + "/submissions?apiKey=" + JotFormAPIKey)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	responseBody, err := ioutil.ReadAll(res.Body)
+	var data map[string]interface{}
+	err = json.Unmarshal(responseBody, &data)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// JotForm API structure
+	content := data["content"].([]interface{})
+
+	// should not be so big-sized
+	return content
 }
+
+func getRandomMovie() Movie {
+
+	allMovies := getAllMovies()
+
+	// len(allMovies) is the total number of movies
+	// pick a random one
+	rand.Seed(time.Now().UnixNano())
+	randKey := rand.Intn(len(allMovies))
+	randomMovie := allMovies[randKey]
+
+	// sorry future myself
+	// JotForm API & json handling in go forced me to do it :(
+	jotformFields := randomMovie.(map[string]interface{})["answers"].(map[string]interface{})
+
+	// Our Movie struct to be returned
+	var movie Movie
+
+	// JotForm API returns every column,
+	// need to traverse them all
+	for _, answerObj := range jotformFields {
+		answerMap := answerObj.(map[string]interface{})
+
+		if answerMap["text"] == "Title" {
+			if title, ok := answerMap["answer"].(string); ok {
+				movie.Title = title
+			}
+		}
+
+		if answerMap["text"] == "Director" {
+			if director, ok := answerMap["answer"].(string); ok {
+				movie.Director = director
+			}
+		}
+
+		if answerMap["text"] == "Year" {
+			if year, ok := answerMap["answer"].(string); ok {
+				movie.Year = year
+			}
+		}
+
+		if answerMap["text"] == "Notes" {
+			if notes, ok := answerMap["answer"].(string); ok {
+				movie.Notes = notes
+			}
+		}
+	}
+
+	return movie
+}
+
 func sendMovieToChat(chatID int64, movie Movie) error {
 
 	t := template.Must(template.ParseFiles("movie.tmpl"))
@@ -163,6 +233,18 @@ func init() {
 		os.Exit(1)
 	}
 
+	JotFormAPIKey = os.Getenv("JOTFORM_API_KEY")
+	if JotFormAPIKey == "" {
+		fmt.Println("JOTFORM_API_KEY must be set!")
+		os.Exit(1)
+	}
+
+	JotFormFormID = os.Getenv("JOTFORM_FORM_ID")
+	if JotFormFormID == "" {
+		fmt.Println("JOTFORM_FORM_ID must be set!")
+		os.Exit(1)
+	}
+
 	CertFilePath = os.Getenv("CERT_FILE_PATH")
 	if CertFilePath == "" {
 		var path string
@@ -187,8 +269,8 @@ func init() {
 func main() {
 	fmt.Println("Rest API started...")
 	Movies = []Movie{
-		{Title: "The Royal Tenenbaums", Year: 2001, Director: "Wes Anderson"},
-		{Title: "The Italian Job", Year: 2003, Director: "F. Gary Gray"},
+		{Title: "The Royal Tenenbaums", Year: "2001", Director: "Wes Anderson"},
+		{Title: "The Italian Job", Year: "2003", Director: "F. Gary Gray"},
 	}
 	handleRequests()
 }
