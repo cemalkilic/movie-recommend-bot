@@ -24,9 +24,6 @@ type Movie struct {
 	Notes string `json:"notes"`
 }
 
-// global Movies array to simulate a database, for now
-var Movies []Movie
-
 // SSL certificate path
 var CertFilePath string
 // SSL private key path
@@ -45,7 +42,15 @@ func homePage(w http.ResponseWriter, r *http.Request){
 
 func returnAllMovies(w http.ResponseWriter, r *http.Request){
 	fmt.Println("In: returnAllMovies")
-	json.NewEncoder(w).Encode(Movies)
+	allMoviesFromJotForm := getAllMovies()
+
+	allMoviesStructured := make([]Movie, 0, len(allMoviesFromJotForm))
+	for _, movie := range allMoviesFromJotForm {
+		allMoviesStructured = append(allMoviesStructured, getMovieFromJotFormResponse(movie))
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(allMoviesStructured)
 }
 
 // Create a struct that mimics the webhook request body
@@ -272,9 +277,5 @@ func init() {
 
 func main() {
 	fmt.Println("Rest API started...")
-	Movies = []Movie{
-		{Title: "The Royal Tenenbaums", Year: "2001", Director: "Wes Anderson"},
-		{Title: "The Italian Job", Year: "2003", Director: "F. Gary Gray"},
-	}
 	handleRequests()
 }
