@@ -123,19 +123,10 @@ func getAllMovies() []interface{} {
 	return content
 }
 
-func getRandomMovie() Movie {
-
-	allMovies := getAllMovies()
-
-	// len(allMovies) is the total number of movies
-	// pick a random one
-	rand.Seed(time.Now().UnixNano())
-	randKey := rand.Intn(len(allMovies))
-	randomMovie := allMovies[randKey]
-
+func getMovieFromJotFormResponse(jotformResponse interface{}) Movie {
 	// sorry future myself
 	// JotForm API & json handling in go forced me to do it :(
-	jotformFields := randomMovie.(map[string]interface{})["answers"].(map[string]interface{})
+	jotformFields := jotformResponse.(map[string]interface{})["answers"].(map[string]interface{})
 
 	// Our Movie struct to be returned
 	var movie Movie
@@ -171,6 +162,19 @@ func getRandomMovie() Movie {
 	}
 
 	return movie
+}
+
+func getRandomMovie() Movie {
+
+	allMovies := getAllMovies()
+
+	// len(allMovies) is the total number of movies
+	// pick a random one
+	rand.Seed(time.Now().UnixNano())
+	randKey := rand.Intn(len(allMovies))
+	randomMovie := allMovies[randKey]
+
+	return getMovieFromJotFormResponse(randomMovie)
 }
 
 func sendMovieToChat(chatID int64, movie Movie) error {
