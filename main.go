@@ -11,6 +11,7 @@ import (
 	"log"
 	"math/rand"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -18,9 +19,14 @@ import (
 )
 
 type Movie struct {
-	Title string `json:"Title"`
+	Title string `json:"title"`
 	Year string `json:"year"`
 	Director string `json:"director"`
+	Actors string `json:"actors"`
+	Runtime string `json:"runtime"`
+	PosterURL string `json:"poster"`
+	Plot string `json:"plot"`
+	IMDBRating string `json:"imdbRating"`
 	Notes string `json:"notes"`
 }
 
@@ -34,6 +40,8 @@ var TelegramToken string
 var JotFormFormID string
 // JotForm API Key to access the form data
 var JotFormAPIKey string
+// OMDB API Key to get movie metadata
+var OMDBAPIKey string
 
 func homePage(w http.ResponseWriter, r *http.Request){
 	fmt.Fprintf(w, "Welcome to the Homepage!")
@@ -46,7 +54,9 @@ func returnAllMovies(w http.ResponseWriter, r *http.Request){
 
 	allMoviesStructured := make([]Movie, 0, len(allMoviesFromJotForm))
 	for _, movie := range allMoviesFromJotForm {
-		allMoviesStructured = append(allMoviesStructured, getMovieFromJotFormResponse(movie))
+		movieStruct := createMovieStructFromJotFormResponse(movie)
+		movieStruct = fillMovieStructMetadata(movieStruct)
+		allMoviesStructured = append(allMoviesStructured, movieStruct)
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -128,7 +138,7 @@ func getAllMovies() []interface{} {
 	return content
 }
 
-func getMovieFromJotFormResponse(jotformResponse interface{}) Movie {
+func createMovieStructFromJotFormResponse(jotformResponse interface{}) Movie {
 	// sorry future myself
 	// JotForm API & json handling in go forced me to do it :(
 	jotformFields := jotformResponse.(map[string]interface{})["answers"].(map[string]interface{})
@@ -169,6 +179,23 @@ func getMovieFromJotFormResponse(jotformResponse interface{}) Movie {
 	return movie
 }
 
+func fillMovieStructMetadata(movie Movie) Movie {
+	omdbApiURL := "https://www.omdbapi.com/?apikey=" + OMDBAPIKey + "&t=" + url.QueryEscape(movie.Title)
+
+	res, err := http.Get(omdbApiURL)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// Override the value from OMDB API to existing key in movie struct
+	if err := json.NewDecoder(res.Body).Decode(&movie); err != nil {
+		fmt.Println("Could not decode JSON", err)
+		return movie
+	}
+
+	return movie
+}
+
 func getRandomMovie() Movie {
 
 	allMovies := getAllMovies()
@@ -179,7 +206,10 @@ func getRandomMovie() Movie {
 	randKey := rand.Intn(len(allMovies))
 	randomMovie := allMovies[randKey]
 
-	return getMovieFromJotFormResponse(randomMovie)
+	randomMovieStruct := createMovieStructFromJotFormResponse(randomMovie)
+	randomMovieStruct = fillMovieStructMetadata(randomMovieStruct)
+
+	return randomMovieStruct
 }
 
 func sendMovieToChat(chatID int64, movie Movie) error {
@@ -205,8 +235,8 @@ func sendMovieToChat(chatID int64, movie Movie) error {
 	}
 
 	// Send a post request with your token
-	url := "https://api.telegram.org/bot" + TelegramToken + "/sendMessage"
-	res, err := http.Post(url, "application/json", bytes.NewBuffer(reqBytes))
+	telegramApiUrl := "https://api.telegram.org/bot" + TelegramToken + "/sendMessage"
+	res, err := http.Post(telegramApiUrl, "application/json", bytes.NewBuffer(reqBytes))
 	if err != nil {
 		return err
 	}
@@ -251,6 +281,12 @@ func init() {
 	JotFormFormID = os.Getenv("JOTFORM_FORM_ID")
 	if JotFormFormID == "" {
 		fmt.Println("JOTFORM_FORM_ID must be set!")
+		os.Exit(1)
+	}
+
+	OMDBAPIKey = os.Getenv("OMDB_API_KEY")
+	if OMDBAPIKey == "" {
+		fmt.Println("OMDB_API_KEY must be set!")
 		os.Exit(1)
 	}
 
