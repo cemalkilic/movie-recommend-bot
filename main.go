@@ -6,11 +6,15 @@ import (
 	"errors"
 	"fmt"
 	"github.com/gorilla/mux"
+	"html/template"
+	"io/ioutil"
 	"log"
+	"math/rand"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 type Movie struct {
@@ -60,6 +64,7 @@ type telegramUpdateObj struct {
 type sendMessageReqBody struct {
 	ChatID int64  `json:"chat_id"`
 	Text   string `json:"text"`
+	ParseMode string `json:"parse_mode"`
 }
 
 func telegramWebhook(res http.ResponseWriter, req *http.Request) {
@@ -80,8 +85,10 @@ func telegramWebhook(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	// Say hello back to user with name
-	if err := sayHello(body.Message.Chat.ID, body.Message.User.Name); err != nil {
+	randomMovie := getRandomMovie()
+
+	// Send the selected movie to the client
+	if err := sendMovieToChat(body.Message.Chat.ID, randomMovie); err != nil {
 		fmt.Println("Error in sending reply:", err)
 		return
 	}
@@ -90,11 +97,26 @@ func telegramWebhook(res http.ResponseWriter, req *http.Request) {
 	fmt.Println("Reply sent!")
 }
 
-func sayHello(chatID int64, name string) error {
+func getRandomMovie() Movie {
+	rand.Seed(time.Now().UnixNano())
+	fmt.Println(len(Movies))
+	randKey := rand.Intn(len(Movies))
+	return Movies[randKey]
+}
+func sendMovieToChat(chatID int64, movie Movie) error {
+
+	t := template.Must(template.ParseFiles("movie.tmpl"))
+	var tpl bytes.Buffer
+	err := t.Execute(&tpl, movie)
+	if err != nil {
+		panic(err)
+	}
+
 	// Create the request body struct
 	reqBody := &sendMessageReqBody{
 		ChatID: chatID,
-		Text:   "Hello, " + name + "!",
+		Text:   tpl.String(),
+		ParseMode: "HTML",
 	}
 
 	// Create the JSON body from the struct
