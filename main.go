@@ -180,9 +180,19 @@ func createMovieStructFromJotFormResponse(jotformResponse interface{}) *Movie {
 }
 
 func fillMovieStructMetadata(movie *Movie) *Movie {
-	omdbApiURL := "https://www.omdbapi.com/?apikey=" + OMDBAPIKey + "&t=" + url.QueryEscape(movie.Title)
+	req, err := http.NewRequest("GET", "https://www.omdbapi.com/", nil)
+	if err != nil {
+		log.Println(err)
+	}
 
-	res, err := http.Get(omdbApiURL)
+	q := url.Values{}
+	q.Add("apikey", OMDBAPIKey)
+	q.Add("t", movie.Title)
+	q.Add("y", movie.Year)
+
+	req.URL.RawQuery = q.Encode()
+
+	res, err := http.Get(req.URL.String())
 	if err != nil {
 		log.Fatal(err)
 	}
