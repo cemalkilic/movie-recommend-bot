@@ -95,13 +95,9 @@ func telegramWebhook(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	// Pretty print object for now
-	s, _ := json.MarshalIndent(body, "", "  ")
-	fmt.Println(string(s))
-
-	// Check if the message contains "hello"
+	// Check if the message contains "recommend"
 	// if not, return without doing anything
-	if !strings.Contains(strings.ToLower(body.Message.Text), "hello") {
+	if !strings.Contains(strings.ToLower(body.Message.Text), "recommend") {
 		return
 	}
 
