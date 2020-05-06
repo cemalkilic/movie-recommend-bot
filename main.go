@@ -155,21 +155,15 @@ func createMovieStructFromJotFormResponse(jotformResponse interface{}) *Movie {
 			if title, ok := answerMap["answer"].(string); ok {
 				movie.Title = title
 			}
-		}
-
-		if answerMap["text"] == "Director" {
+		} else if answerMap["text"] == "Director" {
 			if director, ok := answerMap["answer"].(string); ok {
 				movie.Director = director
 			}
-		}
-
-		if answerMap["text"] == "Year" {
+		} else if answerMap["text"] == "Year" {
 			if year, ok := answerMap["answer"].(string); ok {
 				movie.Year = year
 			}
-		}
-
-		if answerMap["text"] == "Notes" {
+		} else if answerMap["text"] == "Notes" {
 			if notes, ok := answerMap["answer"].(string); ok {
 				movie.Notes = notes
 			}
