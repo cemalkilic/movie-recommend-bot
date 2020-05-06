@@ -13,7 +13,6 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"path/filepath"
 	"strings"
 	"time"
 )
@@ -30,10 +29,6 @@ type Movie struct {
 	Notes string `json:"notes"`
 }
 
-// SSL certificate path
-var CertFilePath string
-// SSL private key path
-var KeyFilePath string
 // Telegram token
 var TelegramToken string
 // JotForm Form ID that holds the data
@@ -259,7 +254,7 @@ func handleRequests() {
 	router.HandleFunc("/all", returnAllMovies)
 	router.HandleFunc("/telegram", telegramWebhook)
 
-	log.Fatal(http.ListenAndServeTLS(":443", CertFilePath, KeyFilePath, router))
+	log.Fatal(http.ListenAndServe(":9999", router))
 }
 
 func init() {
@@ -288,26 +283,6 @@ func init() {
 	if OMDBAPIKey == "" {
 		fmt.Println("OMDB_API_KEY must be set!")
 		os.Exit(1)
-	}
-
-	CertFilePath = os.Getenv("CERT_FILE_PATH")
-	if CertFilePath == "" {
-		var path string
-		path, err := filepath.Abs("cert.pem")
-		if err != nil {
-			fmt.Println("Error on Abs cert.pem")
-		}
-		CertFilePath = path
-	}
-
-	KeyFilePath = os.Getenv("KEY_FILE_PATH")
-	if KeyFilePath == "" {
-		var path string
-		path, err := filepath.Abs("key.pem")
-		if err != nil {
-			fmt.Println("Error on Abs key.pem")
-		}
-		KeyFilePath = path
 	}
 }
 
